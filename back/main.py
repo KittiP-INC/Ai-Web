@@ -14,6 +14,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ฟังก์ชัน normalize ที่จะใช้แปลงข้อความ
+def normalize(text):
+    return unicodedata.normalize("NFKC", text).lower()
+
 def load_ontology_data():
     try:
         g = Graph()
@@ -70,6 +74,7 @@ def load_ontology_data():
         print(f"❌ Error loading OWL file: {e}")
         return []
 
+
 ontology_data = load_ontology_data()
 
 @app.get("/search")
@@ -78,16 +83,36 @@ def search_ontology(query: str):
     print(f"🔍 ค้นหา: {query}")
     
     results = []
+    suggestions = []
+
+    # ค้นหาในทุกฟิลด์ รวมถึงชื่อจังหวัดและชื่อดั้งเดิม
     for item in ontology_data:
-        # ค้นหาในทุกฟิลด์ รวมถึงชื่อจังหวัดและชื่อดั้งเดิม
-        if (query in normalize(item["subject"].lower()) or 
-            query in normalize(item["object"].lower()) or
-            any(query in normalize(name.lower()) 
-                for name in item.get("province_names", [])) or
-            any(query in normalize(trad_name.lower()) 
-                for trad_name in item.get("traditional_names", []))):
+        # ตัดคำว่า "mytourism:" ออกจาก subject, object, province_names, และ traditional_names
+        subject = item["subject"].replace("mytourism:", "")
+        object_ = item["object"].replace("mytourism:", "")
+        
+        # ตรวจสอบคำค้นหาใน subject, object, province_names, และ traditional_names
+        subject_match = query in normalize(subject.lower())
+        object_match = query in normalize(object_.lower())
+        
+        province_name_match = any(query in normalize(name.lower()) for name in item.get("province_names", []))
+        trad_name_match = any(query in normalize(trad_name.lower()) for trad_name in item.get("traditional_names", []))
+        
+        # หากพบผลลัพธ์ตรง
+        if subject_match or object_match or province_name_match or trad_name_match:
+            item["subject"] = subject  # อัพเดท subject
+            item["object"] = object_  # อัพเดท object
+            # ลบ "mytourism:" ออกจากชื่อจังหวัดและชื่อดั้งเดิม
+            item["province_names"] = [name.replace("mytourism:", "") for name in item.get("province_names", [])]
+            item["traditional_names"] = [name.replace("mytourism:", "") for name in item.get("traditional_names", [])]
             results.append(item)
-    
+        else:
+            # ค้นหาชื่อจังหวัดที่ใกล้เคียงโดยการเริ่มต้นด้วยคำค้นหา
+            for province_name in item.get("province_names", []):
+                # ตรวจสอบว่าชื่อจังหวัดเริ่มต้นด้วยคำค้นหา
+                if normalize(province_name.lower()).startswith(query):
+                    suggestions.append(province_name.replace("mytourism:", ""))
+
     # ถ้าไม่พบผลลัพธ์ ให้ค้นหาใน Uthaithani
     if not results:
         results = [
@@ -95,6 +120,10 @@ def search_ontology(query: str):
             if "Uthaithani" in item["subject"] or 
                "Uthaithani" in item["object"]
         ]
+    
+    # หากยังไม่พบผลลัพธ์, ให้แสดงคำแนะนำของจังหวัดที่ใกล้เคียง
+    if not results and suggestions:
+        return {"message": "ไม่พบผลลัพธ์ที่ตรงกับคำค้นหา แต่เราขอแนะนำจังหวัดใกล้เคียง:", "suggestions": suggestions}
     
     print(f"✅ ผลลัพธ์ที่พบ: {len(results)} รายการ")
     if results:
@@ -104,7 +133,4 @@ def search_ontology(query: str):
             if "province_names" in item:
                 print(f"  Province names: {item['province_names']}")
     
-    return {"results": results}
-
-def normalize(text):
-    return unicodedata.normalize("NFKC", text).lower()
+    return {"results": results, "suggestions": suggestions}

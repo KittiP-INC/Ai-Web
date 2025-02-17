@@ -1,0 +1,91 @@
+.search-container {
+  text-align: center;
+  margin: 50px auto;
+  max-width: 500px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+input {
+  width: 80%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+input:focus {
+  border-color: #ff7c02;
+  outline: none;
+}
+
+button {
+  padding: 12px 24px;
+  background-color: #f78e06;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+  background-color: hsl(34, 100%, 50%);
+  transform: translateY(-2px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  background: #ffffff;
+  margin: 5px 0;
+  padding: 12px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+li:hover {
+  background-color: #f1f1f1;
+  transform: translateX(5px);
+}
+
+.suggestions {
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-top: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.suggestions li {
+  padding: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.suggestions li:hover {
+  background-color: #e9ecef;
+}
+
+/* เพิ่มสไตล์สำหรับข้อความ "ไม่มีผลลัพธ์" */
+.no-results {
+  color: #6c757d;
+  font-style: italic;
+  margin-top: 10px;
+}
