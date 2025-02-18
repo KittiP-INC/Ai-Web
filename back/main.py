@@ -80,57 +80,19 @@ ontology_data = load_ontology_data()
 @app.get("/search")
 def search_ontology(query: str):
     query = normalize(query.strip().lower())
-    print(f"🔍 ค้นหา: {query}")
-    
     results = []
     suggestions = []
 
-    # ค้นหาในทุกฟิลด์ รวมถึงชื่อจังหวัดและชื่อดั้งเดิม
     for item in ontology_data:
-        # ตัดคำว่า "mytourism:" ออกจาก subject, object, province_names, และ traditional_names
-        subject = item["subject"].replace("mytourism:", "")
-        object_ = item["object"].replace("mytourism:", "")
-        
-        # ตรวจสอบคำค้นหาใน subject, object, province_names, และ traditional_names
-        subject_match = query in normalize(subject.lower())
-        object_match = query in normalize(object_.lower())
-        
-        province_name_match = any(query in normalize(name.lower()) for name in item.get("province_names", []))
-        trad_name_match = any(query in normalize(trad_name.lower()) for trad_name in item.get("traditional_names", []))
-        
-        # หากพบผลลัพธ์ตรง
-        if subject_match or object_match or province_name_match or trad_name_match:
-            item["subject"] = subject  # อัพเดท subject
-            item["object"] = object_  # อัพเดท object
-            # ลบ "mytourism:" ออกจากชื่อจังหวัดและชื่อดั้งเดิม
-            item["province_names"] = [name.replace("mytourism:", "") for name in item.get("province_names", [])]
-            item["traditional_names"] = [name.replace("mytourism:", "") for name in item.get("traditional_names", [])]
-            results.append(item)
-        else:
-            # ค้นหาชื่อจังหวัดที่ใกล้เคียงโดยการเริ่มต้นด้วยคำค้นหา
-            for province_name in item.get("province_names", []):
-                # ตรวจสอบว่าชื่อจังหวัดเริ่มต้นด้วยคำค้นหา
-                if normalize(province_name.lower()).startswith(query):
-                    suggestions.append(province_name.replace("mytourism:", ""))
+        province_names = [name.replace("mytourism:", "") for name in item.get("province_names", [])]
 
-    # ถ้าไม่พบผลลัพธ์ ให้ค้นหาใน Uthaithani
-    if not results:
-        results = [
-            item for item in ontology_data 
-            if "Uthaithani" in item["subject"] or 
-               "Uthaithani" in item["object"]
-        ]
-    
-    # หากยังไม่พบผลลัพธ์, ให้แสดงคำแนะนำของจังหวัดที่ใกล้เคียง
-    if not results and suggestions:
-        return {"message": "ไม่พบผลลัพธ์ที่ตรงกับคำค้นหา แต่เราขอแนะนำจังหวัดใกล้เคียง:", "suggestions": suggestions}
-    
-    print(f"✅ ผลลัพธ์ที่พบ: {len(results)} รายการ")
-    if results:
-        for item in results[:5]:
-            print(f"🔹 Subject: {item['subject']} | Object: {item['object']}")
-            # แสดงชื่อจังหวัดถ้ามี
-            if "province_names" in item:
-                print(f"  Province names: {item['province_names']}")
-    
+        # หาจังหวัดที่ "ขึ้นต้น" ด้วยคำค้นหา
+        for name in province_names:
+            if normalize(name.lower()).startswith(query) and name not in suggestions:
+                suggestions.append(name)
+
+        # หาผลลัพธ์จริง
+        if any(query in normalize(name.lower()) for name in province_names):
+            results.append(item)
+
     return {"results": results, "suggestions": suggestions}

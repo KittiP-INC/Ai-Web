@@ -1,49 +1,75 @@
 import { useState, useEffect } from "react";
+import "./App.css"; // ใช้ไฟล์ CSS สำหรับจัดตำแหน่ง
 
 function App() {
-    const [query, setQuery] = useState("");  // สำหรับเก็บคำค้นหาของผู้ใช้
-    const [results, setResults] = useState([]);  // สำหรับเก็บผลลัพธ์
-    const [suggestions, setSuggestions] = useState([]);  // สำหรับเก็บคำแนะนำ
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState([]);
+    const [suggestions, setSuggestions] = useState([]);
 
+    // ฟังก์ชันโหลด "คำแนะนำ" ขณะพิมพ์
+    const handleSuggest = async (input) => {
+        if (input.trim() === "") {
+            setSuggestions([]);
+            return;
+        }
+        try {
+            const res = await fetch(`http://127.0.0.1:8000/search?query=${input}`);
+            const data = await res.json();
+            console.log("📌 Suggestions:", data.suggestions);
+            setSuggestions(data.suggestions || []);
+        } catch (error) {
+            console.error("Error fetching suggestions:", error);
+            setSuggestions([]);
+        }
+    };
+
+    // ฟังก์ชัน "ค้นหาข้อมูลจริง" (เรียก API เฉพาะเมื่อกดปุ่ม "ค้นหา")
     const handleSearch = async () => {
         if (query.trim() === "") return;
 
         try {
             const res = await fetch(`http://127.0.0.1:8000/search?query=${query}`);
             const data = await res.json();
-            setResults(data.results || []);  // ตั้งค่าผลลัพธ์การค้นหา
-            setSuggestions(data.suggestions || []);  // ตั้งค่าคำแนะนำ
+            setResults(data.results?.map(item => ({
+                subject: item.subject.replace("mytourism:", ""),
+                object: item.object.replace("mytourism:", "")
+            })) || []);
+            setSuggestions([]); // เคลียร์คำแนะนำหลังจากกดค้นหา
         } catch (error) {
             console.error("Error fetching data:", error);
             setResults([]);
-            setSuggestions([]);
         }
     };
 
+    // ใช้ `useEffect()` โหลดคำแนะนำขณะพิมพ์ (แต่ไม่ค้นหาข้อมูลจริง)
     useEffect(() => {
-        if (query.trim() === "") {
-            setSuggestions([]);  // หากคำค้นหาว่างให้เคลียร์คำแนะนำ
-            return;
-        }
-
         const timer = setTimeout(() => {
-            handleSearch();  // เรียก handleSearch เมื่อผู้ใช้หยุดพิมพ์
-        }, 500); // รอ 500ms หลังจากหยุดพิมพ์
+            handleSuggest(query);
+        }, 300); // รอ 300ms หลังจากพิมพ์
 
-        return () => clearTimeout(timer);  // ล้าง timeout เมื่อมีการพิมพ์ใหม่
-    }, [query]);  // เมื่อ query เปลี่ยนแปลงให้เรียก useEffect ใหม่
+        return () => clearTimeout(timer);
+    }, [query]);
 
     return (
         <div className="search-container">
             <h1>โปรดใส่ชื่อจังหวัด</h1>
-            <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)} // เก็บข้อมูลที่พิมพ์
-                placeholder="พิมพ์ชื่อจังหวัดตรงนี้"
-            />
+            <div className="input-wrapper">
+                <input
+                    type="text"
+                    list="suggestions-list"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="พิมพ์ชื่อจังหวัดตรงนี้"
+                />
+                <datalist id="suggestions-list">
+                    {suggestions.map((suggestion, index) => (
+                        <option key={index} value={suggestion} />
+                    ))}
+                </datalist>
+            </div>
             <button onClick={handleSearch}>ค้นหา</button>
 
+            {/* แสดงผลลัพธ์เฉพาะเมื่อกดค้นหา */}
             <div>
                 {results.length > 0 ? (
                     <ul>
@@ -57,18 +83,6 @@ function App() {
                     <p>ไม่มีผลลัพธ์</p>
                 )}
             </div>
-
-            {/* แสดงคำแนะนำในระหว่างการพิมพ์ */}
-            {suggestions.length > 0 && query && (
-                <div>
-                    <h3>คำแนะนำที่ใกล้เคียง:</h3>
-                    <ul>
-                        {suggestions.map((suggestion, index) => (
-                            <li key={index}>{suggestion}</li>
-                        ))}
-                    </ul>
-                </div>
-            )}
         </div>
     );
 }
